@@ -1,0 +1,20 @@
+#NEXUS
+begin hybridsim ;
+    epochs = (1);
+    speciation rate = (3 ,0.5);
+    hybridization rate = (0 ,5);
+    introgression rate = 5;
+    hybridization distribution = (0.1 ,1 ,0.25 ,1 ,0.5 ,2);
+    reticulation threshold = 1;
+    reticulation function = linear;
+    minimum reticulations = 2;
+    reduce reticulations to = 2;
+    coalesce = true;
+    coalescence rate = 0.1;
+    halt time = 20;
+    halt taxa = 50;
+    halt reticulations = 30;
+    dollo sites per tree = 0;
+    filo sites per tree = 0;
+    number random trees = 10;
+end;
