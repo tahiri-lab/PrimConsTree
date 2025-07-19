@@ -1,6 +1,7 @@
 """Function for each step of the PCT algorithm"""
 
 import heapq
+import random
 from statistics import fmean
 from typing import Generator, cast
 
@@ -20,7 +21,7 @@ def add_tree_to_graph(t: ete3.Tree, taxa: list[str], graph: nx.Graph) -> None:
         # get mapped identifier based on clade content
         nid = clade_to_id(node.get_leaf_names(), taxa)
         # add node to the graph
-        if not nid in graph.nodes:
+        if nid not in graph.nodes:
             graph.add_node(nid, node_freq=0, is_leaf=node.is_leaf())
 
         # if the node is not the root
@@ -92,14 +93,19 @@ def get_weights(graph: nx.Graph, u: int, v: int, crits: list[str]) -> tuple:
     return weights
 
 
-def attach_leaves(graph: nx.Graph, taxa: list[str], crits: list[str]) -> None:
+def attach_leaves(
+    graph: nx.Graph, taxa: list[str], crits: list[str], rnd_id: dict[int, int]
+) -> None:
     """Attach the node corresponding to leaves to the mst,
     Use the criterion <crits> do decide which parent is the better
     """
     # Attach the leaf nodes by choosing the most profitable edge
+    # For each leaf u we look at its parents
+    # Assuming the graph is undirected, the set of parents is given by graph[u]
+    # This is to be modified if the graph is directed
     for u in [1 << i for i in range(len(taxa))]:
         for v in graph[u]:
-            weights = get_weights(graph, v, u, crits)
+            weights = (*get_weights(graph, v, u, crits), rnd_id[v])
             if graph.nodes[u]["key"] > weights:
                 graph.nodes[u]["key"] = weights
                 graph.nodes[u]["parent"] = v
@@ -134,16 +140,26 @@ def mst_to_tree(graph: nx.Graph) -> ete3.Tree:
 
 
 def build_mst(
-    graph: nx.Graph, src: int, taxa: list[str], crits: list[str]
+    graph: nx.Graph, src: int, taxa: list[str], crits: list[str], seed: int
 ) -> ete3.Tree:
     """Build the MST of the graph, starting at the source node src
     (where src is the node identifier based on clade_to_id()).
     <crits> define the criterion to choose the edges in order of priority,
     see get_weights() doc for the valid criterions.
     The MST is returned as a ete3.Tree instance, with internal nodes
-    and average edge lengths
+    and average edge lengths.
+    The seed control how identical element are sorted, this ensure that element
+    are not sorted by id because it would be a bias
     """
     nodes = graph.nodes(data=True)
+
+    random.seed(seed)
+    rnd_id = {
+        n: rnd
+        for n, rnd in zip(
+            graph.nodes, random.sample(range(0, get_root_id(taxa)), len(graph.nodes))
+        )
+    }
 
     for _, node in nodes:
         # wether the node is already in the mst
@@ -151,14 +167,14 @@ def build_mst(
         # the parent of the node in the mst (-1) for undetermined
         node["parent"] = -1
         # store the criterion values for the most profitable edge leading to node, found so far
-        node["key"] = (float("inf"),) * len(crits)
+        node["key"] = (float("inf"),) * (len(crits) + 1)
 
     # Priority queue storing the next edges to add
     queue = []
 
     # Append the source node to the queue to start fron it
     graph.nodes[src]["key"] = (0,) * len(crits)
-    heapq.heappush(queue, (*graph.nodes[src]["key"], src))
+    heapq.heappush(queue, (*graph.nodes[src]["key"], rnd_id[src], src))
 
     # Loop until the priority queue becomes empty
     while queue:
@@ -182,12 +198,12 @@ def build_mst(
             # If so, update the key of v and push the edge on the heap
             weights = get_weights(graph, u, v, crits)
             if next_node["key"] > weights:
-                heapq.heappush(queue, (*weights, v))
+                heapq.heappush(queue, (*weights, rnd_id[v], v))
                 next_node["key"] = weights
                 next_node["parent"] = u
 
     # Attach the leaf nodes
-    attach_leaves(graph, taxa, crits)
+    attach_leaves(graph, taxa, crits, rnd_id)
     # Build the tree from the attached parent values
     mst = mst_to_tree(graph)
 
@@ -221,12 +237,23 @@ def remove_unecessary_nodes(
                 node.delete(prevent_nondicotomic=False, preserve_branch_length=True)
 
             # if the non-leaf node has only one children contract the edge from node to its parent
-            elif len(children) == 1:
+            elif len(children) == 1 and node.up is not None:
                 c = children[0]
                 if c not in accumulated_lengths:
                     accumulated_lengths[c] = [c.dist]
                 accumulated_lengths[c].append(node.dist)
                 node.delete(prevent_nondicotomic=False, preserve_branch_length=True)
+
+            # can't contract the edge because root has no parent
+            # instead delete the child c of the root and link each of its children
+            # c2 to the root
+            elif len(children) == 1:
+                c = children[0]
+                for c2 in c.get_children():
+                    if c2 not in accumulated_lengths:
+                        accumulated_lengths[c2] = [c2.dist]
+                    accumulated_lengths[c2].append(c.dist)
+                c.delete(prevent_nondicotomic=False, preserve_branch_length=True)
 
     if average_on_merge:
         for node, lengths in accumulated_lengths.items():

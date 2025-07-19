@@ -26,16 +26,18 @@ TXT_DIR = "HS"  # directory to take the inputs for most algorithms (take txts)
 NEX_DIR = "FACT"  # directory to take the inputs for FACT2 algorithms
 
 # note parameter must be compatible with the generated trees
-K = [10, 30, 50, 90, 110, 130, 150]  # values for number of trees
-N = [10, 20, 30, 40, 50]  # values for number of leaves
+K = [10, 30]  # 50, 90, 110, 130, 150]  # values for number of trees
+N = [10, 20]  # , 30, 40, 50]  # values for number of leaves
 C = [1, 2.5, 5, 7.5, 10]  # values for coalescence rate
 NB_BATCH = 5  # number of batch per combination of parameters
+
+BENCHMARK = 0  # number of iteration on benchmark execution time (0 for no benchmark)
 
 ###############
 ### OUTPUTS ###
 ###############
 
-RESULTS_FILE = "outputs/eval/All.json"  # file to output the results
+RESULTS_FILE = "outputs/test.json"  # file to output the results
 
 # algorithms to perfoem (maj, pct, old_pct, freq)
 ALGS = [
@@ -64,9 +66,6 @@ DISTS = [
     ("kcdist", {"lamb": 0.5}),
     ("kcdist", {"lamb": 1.0}),
 ]
-
-# number of iteration on benchmark execution time (0 for no benchmark)
-BENCHMARK = 3
 
 #########################
 ### END OF PARAMETERS ###

@@ -53,8 +53,10 @@ def id_to_clade(identifier: int, taxa: list[str]) -> list[str]:
     """Get the clade contend as a list of taxon from
     the id infered with the method of clade_to_id
     """
+    if identifier < 0:
+        raise Exception("invalid id")
     clade = []
     for i, t in enumerate(taxa):
         if identifier & (1 << i) == (1 << i):
             clade.append(t)
-    return clade
+    return sorted(clade)

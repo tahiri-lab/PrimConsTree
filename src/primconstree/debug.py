@@ -77,3 +77,57 @@ def draw_tree(tree: ete3.Tree, taxa: list[str]) -> None:
 
     tree_graph = tree_to_graph(tree)
     draw_graph(tree_graph, taxa)
+
+
+def draw_mst(
+    graph: nx.Graph,
+    taxa: list[str],
+) -> None:
+    """Draw a networkx graph with matplotlib
+    Edge are labeled with "l:<lenght> - f:<frequency>"
+    Nodes are labeled with "f:<frequency> - clade content"
+    Node corresponding to leaves are red
+
+    Args:
+        graph: the graph to display
+        taxa: the list of taxa the vertices id are mapped against
+    """
+    pos = nx.spring_layout(graph)
+
+    # Draw nodes and edges
+    leaf_nodes = [1 << i for i in range(len(taxa))]
+    node_colors = [
+        (
+            "green"
+            if node == sum(leaf_nodes)
+            else "red" if node in leaf_nodes else "lightblue"
+        )
+        for node in graph.nodes()
+    ]
+
+    edge_colors = [
+        (
+            "red"
+            if graph.nodes[u]["parent"] == v or graph.nodes[v]["parent"] == u
+            else "black"
+        )
+        for u, v in graph.edges()
+    ]
+
+    nx.draw_networkx_nodes(graph, pos, node_color=node_colors, node_size=500)
+    nx.draw_networkx_edges(graph, pos, edge_color=edge_colors)
+
+    # Draw edge labels
+    edge_labels = {
+        (u, v): f"{data["edge_freq"]}" for u, v, data in graph.edges(data=True)
+    }
+    nx.draw_networkx_edge_labels(graph, pos, edge_labels=edge_labels)
+
+    # Draw node labels
+    node_labels = {u: f"{data["node_freq"]}" for u, data in graph.nodes(data=True)}
+    nx.draw_networkx_labels(graph, pos, labels=node_labels, font_weight="bold")
+
+    # Display the graph
+    plt.title("Graph")
+    plt.axis("off")
+    plt.show()

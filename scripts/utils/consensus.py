@@ -4,6 +4,7 @@ import timeit
 import ete3
 from Bio import Phylo
 from Bio.Phylo.Consensus import majority_consensus
+
 from primconstree import primconstree
 
 from .trees import map_from_fact, phylo_to_ete3, read_trees, set_cst_length
@@ -27,6 +28,19 @@ def maj_plus(input_file, cst):
     return set_cst_length(cons, cst)
 
 
+def pct(input_trees, **args):
+    if args.get("old_prim") == True:
+        args.pop("old_prim", None)
+        return primconstree(input_trees, ["min_avg_len", "max_edge_freq"], **args)
+    else:
+        args.pop("old_prim", None)
+        return primconstree(
+            input_trees,
+            ["max_edge_freq", "max_nfreq_out", "max_nfreq_in"],
+            **args,
+        )
+
+
 def consensus(
     filename: str, alg: str, coal: float, **args
 ) -> tuple[ete3.Tree, timeit.Timer]:
@@ -43,8 +57,8 @@ def consensus(
     """
     if alg == "pct":
         input_trees = read_trees(filename)
-        cons = primconstree(input_trees, debug=False, **args)
-        tm = timeit.Timer(lambda: primconstree(input_trees, debug=False, **args))
+        cons = pct(input_trees, **args)
+        tm = timeit.Timer(lambda: pct(input_trees, **args))
         return cons, tm
 
     if alg == "maj":

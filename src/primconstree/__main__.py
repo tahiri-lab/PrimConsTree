@@ -14,6 +14,13 @@ def main():
         help="input file path, input is a text file with a newick tree on each line.",
     )
     parser.add_argument(
+        "-s",
+        "--seed",
+        type=int,
+        help=("Choose the seed used to break ties in the MST algorithm"),
+        default=0,
+    )
+    parser.add_argument(
         "-v",
         "--version",
         type=int,
@@ -22,7 +29,6 @@ def main():
             "- 0 : first version of PCT where MST criterion are min edge length, max edge frequency, in this order of priority.\n"
             "- 1 (default) : last version where MST criterion are max edge frequency, max fringe vertex frequency, max mst vertex frequency in this order of priority.\n"
         ),
-        nargs="?",
         default=1,
     )
     parser.add_argument(
@@ -64,7 +70,9 @@ def main():
     debug = bool(args.debug)
 
     input_trees = read_trees(filename)
-    consensus = primconstree(input_trees, crits, avg_on_merge, debug)
+    consensus = primconstree(
+        input_trees, crits=crits, avg_on_merge=avg_on_merge, debug=debug, seed=args.seed
+    )
     print(consensus.write())
 
 

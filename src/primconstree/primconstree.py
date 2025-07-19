@@ -12,6 +12,7 @@ def primconstree(
     crits: list[str],
     avg_on_merge: bool = False,
     debug: bool = False,
+    seed: int = 0,
 ) -> ete3.Tree:
     """Generate the consensus tree from a set of phylogenetic trees
        using the PrimConsTree algorithm
@@ -21,6 +22,7 @@ def primconstree(
         crits: list of criterion to use for the MST in priority order. Valid crit are "max_edge_freq", "max_nfreq_out" (fringe vertex), "max_nfreq_in" (mst vertex), "min_avg_len".
         avg_on_merge: By default, branch length are summed in remove_unecessary_nodes, if True average is computed instead (see --help for more info). Defaults to False.
         debug: If True, display informations at different steps, including graph, mst and tree plots.
+        seed: The seed used to break ties in the mst
 
     Returns:
         ete3.Tree: the consensus tree
@@ -41,7 +43,7 @@ def primconstree(
     root = get_root_id(taxa)
     if debug:
         print("PCT: " + f"Searching MST from root f{root}")
-    mst = build_mst(graph, root, taxa, crits)
+    mst = build_mst(graph, root, taxa, crits, seed)
     if debug:
         print("PCT: " + f"MST found")
         draw_tree(mst, taxa)
