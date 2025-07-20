@@ -9,6 +9,7 @@ import tempfile
 from contextlib import contextmanager
 from itertools import product
 from pathlib import Path
+from types import TracebackType
 
 import ete3
 
@@ -18,12 +19,13 @@ from utils.trees import LEAVES_MAP, map_to_fact
 ### Simulation Parameters ###
 #############################
 
+SEED = 0
 K = [150, 130, 110, 90, 70, 50, 30, 10]  # values for number of trees
 N = [50, 40, 30, 20, 10]  # values for number of leaves
 C = [1, 2.5, 5, 7.5, 10]  # valurs for coalescence rate
 NB_BATCH = 5  # number of batch per combination of parameters
 
-OUTPUT = Path("datasets/eval")
+OUTPUT = Path("datasets/test")
 DIR_NWK = OUTPUT / "HS"  # directory to store input files
 DIR_FACT = OUTPUT / "FACT"  # directory to store nexus files for FACT package
 HS_PATH = "scripts/tools/hybridsim319.jar"  # path to the hybridsim java program (.jar)
@@ -68,7 +70,8 @@ def temp_dir():
     try:
         yield os.path.abspath(temp_dir)
     except Exception as e:
-        print(e)
+        print("The following error was encoutered using temp_dir()")
+        print(e.with_traceback(None))
     finally:
         shutil.rmtree(temp_dir)
 
@@ -91,18 +94,28 @@ def generate_FACT(trees: list[str]) -> str:
     return content
 
 
-def generate_hs(hs: str, k: int, n: int, c: float, n_batch: int) -> list[list[str]]:
+def generate_hs(hs: str, k: int, n: int, c: float, b: int) -> list[str]:
     """Generate a list of phylogenetic trees with HybridSim"""
     with temp_dir() as nexus_dir:
         # Write the params in the input file
-        params = default_params.format(c, n, k * n_batch)
+        params = default_params.format(c, n, k)
         file_in = f"{nexus_dir}/{k}x{n}x{c}_in.nexus"
         file_out = f"{nexus_dir}/{k}x{n}x{c}_out.nexus"
         with open(file_in, "w") as f:
             f.write(params)
 
         # Run the simulation
-        java_cmd = [shutil.which("java"), "-jar", hs, "-i", file_in, "-o", file_out]
+        java_cmd = [
+            shutil.which("java"),
+            "-jar",
+            hs,
+            "-i",
+            file_in,
+            "-o",
+            file_out,
+            "-s",
+            str(SEED + b),
+        ]
         try:
             subprocess.run(
                 java_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT
@@ -120,7 +133,7 @@ def generate_hs(hs: str, k: int, n: int, c: float, n_batch: int) -> list[list[st
         tree_block = match.group(1)
         trees = tree_pattern.findall(tree_block)
 
-    return [trees[i * k : (i + 1) * k] for i in range(n_batch)]
+        return trees
 
 
 logging.basicConfig(
@@ -132,13 +145,12 @@ if __name__ == "__main__":
     os.makedirs(DIR_NWK, exist_ok=True)
     os.makedirs(DIR_FACT, exist_ok=True)
 
-    for k, n, c in product(K, N, C):
-        logging.info("Generatig trees for combination k=%i n=%i c=%i.", k, n, c)
-        batches = generate_hs(HS_PATH, k, n, c, NB_BATCH)
-        for i, b in enumerate(batches):
-            path_nwk = DIR_NWK / (f"k{k}_n{n}_c{c}_b{i}.txt")
-            path_nexus = DIR_FACT / (f"k{k}_n{n}_c{c}_b{i}.nexus")
-            with open(path_nwk, "w") as f:
-                f.write("\n".join(b))
-            with open(path_nexus, "w") as f:
-                f.write(generate_FACT(b))
+    for k, n, c, b in product(K, N, C, range(NB_BATCH)):
+        logging.info("Generatig trees for combination k=%i n=%i c=%i b=%i.", k, n, c, b)
+        batch = generate_hs(HS_PATH, k, n, c, b)
+        path_nwk = DIR_NWK / (f"k{k}_n{n}_c{c}_b{b}.txt")
+        path_nexus = DIR_FACT / (f"k{k}_n{n}_c{c}_b{b}.nexus")
+        with open(path_nwk, "w") as f:
+            f.write("\n".join(batch))
+        with open(path_nexus, "w") as f:
+            f.write(generate_FACT(batch))
