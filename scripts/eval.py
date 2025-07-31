@@ -39,7 +39,7 @@ BENCHMARK = 0  # number of iteration on benchmark execution time (0 for no bench
 
 RESULTS_FILE = "outputs/eval/NEW_ALL.json"  # file to output the results
 
-# algorithms to perfoem (maj, pct, old_pct, freq)
+# algorithms to perform (maj, pct, old_pct, freq)
 ALGS = [
     ("pct", {}),
     ("pct", {"old_prim": True}),
@@ -80,7 +80,7 @@ def eval_consensus(
     benchmark: int,
     coal: float,
 ) -> dict:
-    """Compute consensus trees and metrics for several batches of input trees
+    """Compute consensus trees and metrics for several sets of input trees
 
     Args:
         alg (tuple[str, dict]): the name of the consensus algorithm and additional parameters
